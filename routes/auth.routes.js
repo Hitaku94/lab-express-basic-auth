@@ -34,4 +34,72 @@ router.post('/signup', (req, res, next) => {
 
 })
 
+router.get('/signin', (req, res, next) => {
+    res.render('auth/signin.hbs')
+})
+
+let userInfo = {} 
+
+router.post('/signin', (req, res, next) => {
+    const { username, password } = req.body
+    UserModel.findOne({username})
+    .then((result) => {
+        if(!result) {
+            res.render('auth/signin.hbs', {msg: 'Username or password does not match'})
+        }
+        else {
+            bcrypt.compare(password, result.password)
+            .then((passResult) => {
+                if(passResult) {
+                    req.session.userInfo = result
+                    req.app.locals.isUserLoggedIn = true
+                    res.redirect('/profile')
+                }
+                else {
+                    res.render('auth/signin.hbs', {msg: 'Username or password does not match'})
+                }
+            })
+        }
+    })
+    .catch((err) => {
+        next(err)
+    });
+})
+
+router.get('/profile', (req, res, next) => {
+    const { username } = req.session.userInfo
+    res.render('profile.hbs', {username})
+})
+
+router.get('/logout', (req, res, next) => {
+    req.app.locals.isUserLoggedIn = false
+    req.session.destroy()
+    res.redirect('/')
+})
+
+router.get('/main', (req, res, next) => {
+    if(req.app.locals.isUserLoggedIn) {
+        res.render('main.hbs')
+    }
+    else {
+        res.redirect('/')
+    }
+})
+
+const authorize = (req, res, next) => {
+    console.log("See I'm here")
+    if (req.session.userInfo) {
+      next()
+    }
+    else {
+      res.redirect('/')
+    }
+  }
+
+router.get('/private', authorize, (req, res, next) => {
+    res.render('private.hbs')
+})
+
+
+
 module.exports = router;
